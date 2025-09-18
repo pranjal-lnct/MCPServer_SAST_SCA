@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	scan "github.com/your-org/sast-sca-mcp/internal/scan"
 )
 
 const (
@@ -41,15 +42,16 @@ type jsonrpcError struct {
 type initializeResult struct {
 	ProtocolVersion string            `json:"protocolVersion"`
 	ServerInfo      map[string]string `json:"serverInfo"`
-	Capabilities    initializeCapsule `json:"capabilities"`
+	Capabilities    initializeCaps    `json:"capabilities"`
 }
 
-type initializeCapsule struct {
+type initializeCaps struct {
 	Tools initializeToolCaps `json:"tools"`
 }
 
 type initializeToolCaps struct {
-	Supported bool `json:"supported"`
+	List bool `json:"list"`
+	Call bool `json:"call"`
 }
 
 type listToolsResult struct {
@@ -114,8 +116,8 @@ func initialize() initializeResult {
 			"name":    "sast-sca-mcp",
 			"version": "0.1.0",
 		},
-		Capabilities: initializeCapsule{
-			Tools: initializeToolCaps{Supported: true},
+		Capabilities: initializeCaps{
+			Tools: initializeToolCaps{List: true, Call: true},
 		},
 	}
 }
@@ -188,50 +190,42 @@ func callTool(raw json.RawMessage) callToolResult {
 }
 
 func runSemgrep(args map[string]any) callToolResult {
-	target, err := requireString(args, "target_path")
+	targetValue, err := requireString(args, "target_path")
+	if err != nil {
+		return textError(err)
+	}
+	targetPath, err := scan.ResolveDirectory(targetValue)
 	if err != nil {
 		return textError(err)
 	}
 	config := getString(args, "config", "auto")
 	timeout := getDuration(args, "timeout_seconds", 10*time.Minute)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "semgrep", "--config", config, "--json", "--no-progress", "--quiet", target)
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return textError(fmt.Errorf("semgrep timed out after %s", timeout))
-	}
+	output, err := scan.RunSemgrep(context.Background(), targetPath, config, timeout)
 	if err != nil {
-		return textError(fmt.Errorf("semgrep failed: %w\n%s", err, out))
+		return textError(err)
 	}
 
-	return callToolResult{Content: []toolOutput{{Type: "text", Text: string(out)}}}
+	return callToolResult{Content: []toolOutput{{Type: "text", Text: string(output)}}}
 }
-
 func runGrype(args map[string]any) callToolResult {
-	target, err := requireString(args, "target_path")
+	targetValue, err := requireString(args, "target_path")
+	if err != nil {
+		return textError(err)
+	}
+	targetPath, err := scan.ResolveDirectory(targetValue)
 	if err != nil {
 		return textError(err)
 	}
 	timeout := getDuration(args, "timeout_seconds", 5*time.Minute)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "grype", "--output", "json", "dir:"+target)
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return textError(fmt.Errorf("grype timed out after %s", timeout))
-	}
+	output, err := scan.RunGrype(context.Background(), targetPath, timeout)
 	if err != nil {
-		return textError(fmt.Errorf("grype failed: %w\n%s", err, out))
+		return textError(err)
 	}
 
-	return callToolResult{Content: []toolOutput{{Type: "text", Text: string(out)}}}
+	return callToolResult{Content: []toolOutput{{Type: "text", Text: string(output)}}}
 }
-
 func requireString(m map[string]any, key string) (string, error) {
 	val, ok := m[key]
 	if !ok {

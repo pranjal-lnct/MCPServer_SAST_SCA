@@ -1,0 +1,33 @@
+{
+    "amazonQ.suppressPrompts": {
+        "amazonQChatDisclaimer": true,
+        "createCredentialsProfile": false,
+        "codeWhispererNewWelcomeMessage": false,
+        "codeWhispererConnectionExpired": false,
+        "amazonQWelcomePage": false,
+        "amazonQSessionConfigurationMessage": false,
+        "minIdeVersion": false,
+        "ssoCacheError": false,
+        "amazonQLspManifestMessage": false,
+        "amazonQWorkspaceLspManifestMessage": false,
+        "amazonQChatPairProgramming": false,
+        "amazonQSelectDeveloperProfile": false
+    },
+    "go.toolsManagement.autoUpdate": true,
+    "amazonQ.mcp.servers": {
+        "sast-sca-mcp": {
+            "command": "docker",
+            "args": [
+                "run", "--rm", "-i", 
+                "-v", "${workspaceFolder}:/workspace:ro",
+                "sast-sca-mcp"
+            ]
+        }
+    },
+    "amazonQ.mcpServers": {
+        "sast-sca-mcp": {
+            "command": "docker",
+            "args": ["run", "--rm", "-i", "-v", "${workspaceFolder}:/workspace:ro", "sast-sca-mcp"]
+        }
+    }
+}
