@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sast-sca-mcp": {
+      "command": "c:\\Users\\pranjal.sharma\\source\\repos\\ExternalJars\\MCPServer_SAST_SCA\\mcp-server.exe",
+      "args": [],
+      "env": {}
+    }
+  }
+}

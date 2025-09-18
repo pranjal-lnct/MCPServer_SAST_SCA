@@ -316,7 +316,6 @@ func writeFrame(payload []byte) {
 	if _, err := os.Stdout.Write(payload); err != nil {
 		return
 	}
-	os.Stdout.Write([]byte("\r\n"))
 }
 
 func readFrame(r *bufio.Reader) ([]byte, error) {
